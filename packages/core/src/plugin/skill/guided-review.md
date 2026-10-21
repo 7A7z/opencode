@@ -16,10 +16,9 @@ finding without asking a follow-up question about what it means.
 
 1. **Run the review in a subagent.** Never review inline, not even for a tiny
    diff. Spawn a child agent with the `subagent` tool and relay its review.
-2. **Ask which model the subagent should use.** Use the `question` tool unless
-   the user already named a model in their request. Offer the current session
-   model first, marked `(Recommended)`, plus a few other available models. The
-   question tool adds a "type your own answer" option automatically.
+2. **Do not block on a model choice.** Start the review with the subagent's
+   normal model and leave `model` unset. Only ask which model to use when the
+   user asks to choose one.
 3. **Assume no knowledge of the codebase.** Explain instead of referencing.
    Every finding names and explains the parts of the system it depends on.
 
@@ -42,10 +41,13 @@ If GitHub CLI is unavailable for a PR, fetch the PR diff from its URL with
 webfetch instead. Use judgement for other inputs. If there is nothing to
 review, tell the user and stop; do not invent a review.
 
-## 2. Ask which model
+## 2. Choose the model
 
-Look up candidates with the `models` tool (filter to your own provider first),
-then ask one question:
+Start the review with the subagent's normal model: do not ask, and do not set
+`model`, unless the user asks to choose one.
+
+When the user does ask, look up candidates with the `models` tool (filter to
+your own provider first), then ask one question:
 
 ```text
 header: "Review model"
@@ -58,8 +60,8 @@ options:
 ```
 
 Use the exact `provider/model` (or `provider/model#variant`) value the user
-picks. Do not guess model IDs. Skip the question only when the user already
-named a model for this review.
+picks, and pass it as `model`. Do not guess model IDs. If the user already
+named a model, use it as-is.
 
 ## 3. Spawn the reviewer subagent
 
@@ -67,8 +69,8 @@ Call the `subagent` tool with:
 
 - `agent: "general"`
 - `description: "Guided code review"`
-- `model`: always pass the model the user picked explicitly, so the agent's
-  configured model cannot override their choice.
+- `model`: leave it unset by default. Pass the model the user picked only when
+  they asked to choose one.
 - Foreground (do not pass `background`) so the review returns in this turn.
 - `prompt`: a self-contained brief. The child starts from a blank slate and
   cannot spawn its own subagents, so it must do its own reading and searching.
